@@ -1,0 +1,2 @@
+ID;DateTimePayment;ID_Orders;ID_SanationTypes;ID_ReceptionsSanation;ID_OrdersSanation;IsCanceled
+--;---------------;---------;----------------;---------------------;-----------------;----------

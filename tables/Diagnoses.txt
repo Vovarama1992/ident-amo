@@ -1,0 +1,32 @@
+ID;ID_Parent;RefToMkb;ID_MKB10;Name;Text;Archive;ID_Staffs;ID_StaffsAdded;DateTimeAdded;ID_StaffsChanged;DateTimeChanged
+--;---------;--------;--------;----;----;-------;---------;--------------;-------------;----------------;---------------
+28;NULL;0;NULL;3. Ортопедия;;0;NULL;NULL;2020-11-25 16:31:35.220;NULL;2020-11-25 16:31:35.233
+ID;ID_Parent;RefToMkb;ID_MKB10;Name;Text;Archive;ID_Staffs;ID_StaffsAdded;DateTimeAdded;ID_StaffsChanged;DateTimeChanged
+--;---------;--------;--------;----;----;-------;---------;--------------;-------------;----------------;---------------
+29;28;0;NULL;1. Частичная потеря зубов;;0;NULL;NULL;2020-11-25 16:31:35.220;NULL;2020-11-25 16:31:35.233
+ID;ID_Parent;RefToMkb;ID_MKB10;Name;Text;Archive;ID_Staffs;ID_StaffsAdded;DateTimeAdded;ID_StaffsChanged;DateTimeChanged
+--;---------;--------;--------;----;----;-------;---------;--------------;-------------;----------------;---------------
+30;29;0;NULL;На в\ч;;0;NULL;NULL;2020-11-25 16:31:35.220;NULL;2020-11-25 16:31:35.233
+ID;ID_Parent;RefToMkb;ID_MKB10;Name;Text;Archive;ID_Staffs;ID_StaffsAdded;DateTimeAdded;ID_StaffsChanged;DateTimeChanged
+--;---------;--------;--------;----;----;-------;---------;--------------;-------------;----------------;---------------
+31;30;0;NULL;1-ый класс по Е.И. Гаврилову;частичная потеря зубов на верхней челюсти (1-ый класс по Е.И. Гаврилову);0;NULL;NULL;2020-11-25 16:31:35.220;NULL;2020-11-25 16:31:35.233
+ID;ID_Parent;RefToMkb;ID_MKB10;Name;Text;Archive;ID_Staffs;ID_StaffsAdded;DateTimeAdded;ID_StaffsChanged;DateTimeChanged
+--;---------;--------;--------;----;----;-------;---------;--------------;-------------;----------------;---------------
+32;30;0;NULL;2-ый класс по Е.И. Гаврилову;частичная потеря зубов на верхней челюсти (2-ой класс по Е.И. Гаврилову);0;NULL;NULL;2020-11-25 16:31:35.220;NULL;2020-11-25 16:31:35.233
+ID;ID_Parent;RefToMkb;ID_MKB10;Name;Text;Archive;ID_Staffs;ID_StaffsAdded;DateTimeAdded;ID_StaffsChanged;DateTimeChanged
+--;---------;--------;--------;----;----;-------;---------;--------------;-------------;----------------;---------------
+33;30;0;NULL;3-ий класс по Е.И. Гаврилову;частичная потеря зубов на верхней челюсти (3-ий класс по Е.И. Гаврилову);0;NULL;NULL;2020-11-25 16:31:35.220;NULL;2020-11-25 16:31:35.233
+ID;ID_Parent;RefToMkb;ID_MKB10;Name;Text;Archive;ID_Staffs;ID_StaffsAdded;DateTimeAdded;ID_StaffsChanged;DateTimeChanged
+--;---------;--------;--------;----;----;-------;---------;--------------;-------------;----------------;---------------
+34;30;0;NULL;4-ый класс по Е.И. Гаврилову;частичная потеря зубов на верхней челюсти (4-ый класс по Е.И. Гаврилову);0;NULL;NULL;2020-11-25 16:31:35.220;NULL;2020-11-25 16:31:35.233
+ID;ID_Parent;RefToMkb;ID_MKB10;Name;Text;Archive;ID_Staffs;ID_StaffsAdded;DateTimeAdded;ID_StaffsChanged;DateTimeChanged
+--;---------;--------;--------;----;----;-------;---------;--------------;-------------;----------------;---------------
+35;29;0;NULL;На н\ч;;0;NULL;NULL;2020-11-25 16:31:35.220;NULL;2020-11-25 16:31:35.233
+ID;ID_Parent;RefToMkb;ID_MKB10;Name;Text;Archive;ID_Staffs;ID_StaffsAdded;DateTimeAdded;ID_StaffsChanged;DateTimeChanged
+--;---------;--------;--------;----;----;-------;---------;--------------;-------------;----------------;---------------
+36;35;0;NULL;1-ый класс по Е.И. Гаврилову;частичная потеря зубов на нижней челюсти (1-ый класс по Е.И. Гаврилову);0;NULL;NULL;2020-11-25 16:31:35.220;NULL;2020-11-25 16:31:35.233
+ID;ID_Parent;RefToMkb;ID_MKB10;Name;Text;Archive;ID_Staffs;ID_StaffsAdded;DateTimeAdded;ID_StaffsChanged;DateTimeChanged
+--;---------;--------;--------;----;----;-------;---------;--------------;-------------;----------------;---------------
+37;35;0;NULL;2-ой класс по Е.И. Гаврилову;частичная потеря зубов на нижней челюсти (2-ой класс по Е.И. Гаврилову);0;NULL;NULL;2020-11-25 16:31:35.220;NULL;2020-11-25 16:31:35.233
+ID;ID_Parent;RefToMkb;ID_MKB10;Name;Text;Archive;ID_Staffs;ID_StaffsAdded;DateTimeAdded;ID_StaffsChanged;DateTimeChanged
+--;---------;--------;--------;----;----;-------;---------;--------------;-------------;----------------;---------------
