@@ -1,20 +1,24 @@
 const fs = require('fs');
 const path = require('path');
 const iconv = require('iconv-lite');
+const cfg = require('./config');
 
-const TABLE = 'PaymentsIn';
-const tsvPath = path.join(__dirname, 'output.tsv');
-const previousPath = path.join(__dirname, 'previous', `${TABLE}.json`);
-const diffPath = path.join(__dirname, 'diff.json');
-if (!fs.existsSync(path.dirname(previousPath))) fs.mkdirSync(path.dirname(previousPath));
+const inputDir     = path.join(__dirname, cfg.OUTPUT);
+const previousDir  = path.join(__dirname, cfg.PREVIOUS);
+const diffDir      = path.join(__dirname, cfg.DIFF);
+
+if (!fs.existsSync(previousDir)) fs.mkdirSync(previousDir);
+if (!fs.existsSync(diffDir)) fs.mkdirSync(diffDir);
 
 function parseTSV(tsv) {
-  const [headerLine, ...lines] = tsv.trim().split('\n');
-  const headers = headerLine.split('\t');
-  return lines.map(line => {
+  const lines = tsv.split(/\r?\n/).filter(Boolean);
+  const headers = lines[0].split('\t').map(h => h.trim());
+  return lines.slice(1).map(line => {
     const cols = line.split('\t');
     const obj = {};
-    headers.forEach((h, i) => obj[h.trim()] = cols[i]?.trim());
+    headers.forEach((h, i) => {
+      obj[h] = cols[i]?.trim();
+    });
     return obj;
   });
 }
@@ -36,23 +40,33 @@ function findNewRows(current, previous) {
   return current.filter(r => !prevIds.has(r.ID));
 }
 
-// 👇 ключевое отличие — читаем как бинарный и декодируем
-const rawBuffer = fs.readFileSync(tsvPath);
-const decoded = iconv.decode(rawBuffer, 'win1251');
-const current = parseTSV(decoded);
+let totalNew = 0;
+const tables = cfg.ROOTS.map(r => r.name);
 
-const previous = loadJSON(previousPath);
-const fresh = findNewRows(current, previous);
+for (const table of tables) {
+  const filePath = path.join(inputDir, `${table}.tsv`);
+  if (!fs.existsSync(filePath)) {
+    console.warn(`⚠️ Пропущено: ${table}.tsv не найден`);
+    continue;
+  }
 
-console.log(`📄 Всего строк: ${current.length}`);
-console.log(`🆕 Новых строк: ${fresh.length}`);
+  const rawBuffer = fs.readFileSync(filePath);
+  const decoded = iconv.decode(rawBuffer, 'win1251');
+  const current = parseTSV(decoded);
+  const previous = loadJSON(path.join(previousDir, `${table}.json`));
+  const fresh = findNewRows(current, previous);
 
-saveJSON(previousPath, current);
+  console.log(`📄 ${table}: всего ${current.length}, новых ${fresh.length}`);
 
-if (fresh.length > 0) {
-  saveJSON(diffPath, fresh);
-  console.log('💾 Сохранено в diff.json');
-} else {
-  if (fs.existsSync(diffPath)) fs.unlinkSync(diffPath);
-  console.log('📭 Новых строк нет, diff.json удалён');
+  saveJSON(path.join(previousDir, `${table}.json`), current);
+  const diffPath = path.join(diffDir, `${table}.json`);
+
+  if (fresh.length > 0) {
+    const limited = fresh.slice(0, 10);
+    saveJSON(diffPath, limited);
+    totalNew += limited.length;
+    console.log(`✂️  ${table}: сохранено только ${limited.length} строк (из ${fresh.length})`);
+  }
 }
+
+console.log(`✅ Обработка завершена. Всего новых строк: ${totalNew}`);
