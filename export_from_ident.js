@@ -12,10 +12,10 @@ for (const root of cfg.ROOTS) {
 
   const cmd = [
     'sqlcmd',
-    `-S "${cfg.DB.SERVER}"`,
-    `-U ${cfg.DB.USER}`,
-    `-P ${cfg.DB.PASSWORD}`,
-    `-d ${cfg.DB.DATABASE}`,
+    `-S "${cfg.SERVER}"`,
+    `-U ${cfg.USER}`,
+    `-P ${cfg.PASSWORD}`,
+    `-d ${cfg.DATABASE}`,
     `-Q "${sql.replace(/"/g, '""')}"`,
     '-s "\\t"',
     '-W',

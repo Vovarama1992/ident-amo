@@ -1,15 +1,15 @@
 const fs = require('fs');
 const path = require('path');
-const cfg = require('./config');
+const cfg = require(path.resolve(__dirname, '..', 'config'));
 
-const DIFF_DIR   = path.join(__dirname, cfg.DIFF);
-const MERGED_DIR = path.join(__dirname, cfg.MERGED || 'merged_diff');
+const DIFF_DIR = path.join(__dirname, '..', cfg.DIFF);
+const MERGED_DIR = path.join(__dirname, '..', cfg.MERGED || 'merged_diff');
 
 if (fs.existsSync(MERGED_DIR)) fs.rmSync(MERGED_DIR, { recursive: true });
 fs.mkdirSync(MERGED_DIR);
 
 for (const { name: pipeline } of cfg.PIPELINES) {
-  const mergeFnPath = path.join(__dirname, 'merge_diff_to_logic', pipeline); // merge_diff_to_logic/payments.js и т.п.
+  const mergeFnPath = path.join(__dirname, pipeline); // merge_diff_to_logic/payments.js и т.п.
 
   if (!fs.existsSync(mergeFnPath + '.js')) {
     console.warn(`⚠️  нет мерж-модуля для «${pipeline}» — пропущено`);

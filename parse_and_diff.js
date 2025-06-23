@@ -3,70 +3,96 @@ const path = require('path');
 const iconv = require('iconv-lite');
 const cfg = require('./config');
 
-const inputDir     = path.join(__dirname, cfg.OUTPUT);
-const previousDir  = path.join(__dirname, cfg.PREVIOUS);
-const diffDir      = path.join(__dirname, cfg.DIFF);
+const inputDir    = path.join(__dirname, cfg.OUTPUT);
+const previousDir = path.join(__dirname, cfg.PREVIOUS);
+const diffDir     = path.join(__dirname, cfg.DIFF);
 
-if (!fs.existsSync(previousDir)) fs.mkdirSync(previousDir);
-if (!fs.existsSync(diffDir)) fs.mkdirSync(diffDir);
+if (!fs.existsSync(previousDir)) fs.mkdirSync(previousDir, { recursive: true });
+if (!fs.existsSync(diffDir)) fs.mkdirSync(diffDir, { recursive: true });
 
 function parseTSV(tsv) {
-  const lines = tsv.split(/\r?\n/).filter(Boolean);
-  const headers = lines[0].split('\t').map(h => h.trim());
-  return lines.slice(1).map(line => {
-    const cols = line.split('\t');
+  const lines = tsv.trim().split(/\r?\n/);
+  if (lines.length === 0) return [];
+
+  // Разделяем по обратному слешу '\'
+  const headers = lines[0].split('\\').map(h => h.trim());
+  const data = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split('\\');
+    if (cols.length !== headers.length) {
+      console.warn(`⚠️ Строка ${i + 1} пропущена — несовпадение колонок (${cols.length} vs ${headers.length})`);
+      continue;
+    }
     const obj = {};
-    headers.forEach((h, i) => {
-      obj[h] = cols[i]?.trim();
-    });
-    return obj;
-  });
+    for (let j = 0; j < headers.length; j++) {
+      obj[headers[j]] = cols[j]?.trim() ?? null;
+    }
+    data.push(obj);
+  }
+  return data;
 }
 
-function loadJSON(path, fallback = []) {
+function loadJSON(filePath, fallback = []) {
   try {
-    return fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, 'utf8')) : fallback;
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, 'utf8');
+      return JSON.parse(raw);
+    }
   } catch {
-    return fallback;
+    // можно логировать ошибку, если надо
+  }
+  return fallback;
+}
+
+function saveJSON(filePath, data) {
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+}
+
+function getIdField(tableName) {
+  switch (tableName.toLowerCase()) {
+    case 'patients': return 'ID_Persons';
+    case 'orderpaymentsjournal': return 'ID_Orders';
+    case 'persons': return 'ID_Persons';  // добавь сюда
+    default: return 'ID';
   }
 }
 
-function saveJSON(path, data) {
-  fs.writeFileSync(path, JSON.stringify(data, null, 2), 'utf8');
-}
-
-function findNewRows(current, previous) {
-  const prevIds = new Set(previous.map(r => r.ID));
-  return current.filter(r => !prevIds.has(r.ID));
+function findNewRows(current, previous, idField) {
+  const prevIds = new Set(previous.map(r => r[idField]));
+  return current.filter(r => r[idField] && !prevIds.has(r[idField]));
 }
 
 let totalNew = 0;
-const tables = cfg.ROOTS.map(r => r.name);
-
-for (const table of tables) {
-  const filePath = path.join(inputDir, `${table}.tsv`);
+for (const { name: tableRaw } of cfg.ROOTS) {
+  const table = tableRaw.toLowerCase();
+  const filePath = path.join(inputDir, `${tableRaw}.tsv`);
   if (!fs.existsSync(filePath)) {
-    console.warn(`⚠️ Пропущено: ${table}.tsv не найден`);
+    console.warn(`⚠️ Файл ${tableRaw}.tsv не найден — пропуск`);
     continue;
   }
 
   const rawBuffer = fs.readFileSync(filePath);
   const decoded = iconv.decode(rawBuffer, 'win1251');
   const current = parseTSV(decoded);
-  const previous = loadJSON(path.join(previousDir, `${table}.json`));
-  const fresh = findNewRows(current, previous);
 
-  console.log(`📄 ${table}: всего ${current.length}, новых ${fresh.length}`);
+  const prevPath = path.join(previousDir, `${tableRaw}.json`);
+  const previous = loadJSON(prevPath);
 
-  saveJSON(path.join(previousDir, `${table}.json`), current);
-  const diffPath = path.join(diffDir, `${table}.json`);
+  const idField = getIdField(table);
+  console.log(`📄 ${tableRaw}: всего ${current.length}, предыдущих ${previous.length}, idField=${idField}`);
+
+  const fresh = findNewRows(current, previous, idField);
+  console.log(`🆕 ${tableRaw}: новых строк ${fresh.length}`);
+
+  saveJSON(prevPath, current);
 
   if (fresh.length > 0) {
     const limited = fresh.slice(0, 10);
-    saveJSON(diffPath, limited);
+    saveJSON(path.join(diffDir, `${tableRaw}.json`), limited);
     totalNew += limited.length;
-    console.log(`✂️  ${table}: сохранено только ${limited.length} строк (из ${fresh.length})`);
+    console.log(`✂️ ${tableRaw}: сохранено в дифф ${limited.length} из ${fresh.length}`);
   }
 }
 
-console.log(`✅ Обработка завершена. Всего новых строк: ${totalNew}`);
+console.log(`✅ Готово. Всего новых строк во всех таблицах: ${totalNew}`);

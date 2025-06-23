@@ -1,57 +1,78 @@
-const fs = require('fs');
-const path = require('path');
+const fs    = require('fs');
+const path  = require('path');
 const axios = require('axios');
-const cfg = require('../config');
+const cfg   = require('../config');
 
-const AMO_URL = cfg.AMO.URL;
+const AMO_URL   = cfg.AMO.URL;
 const AMO_TOKEN = cfg.AMO.TOKEN;
 
 const matchesPath = path.join(__dirname, '..', 'matches.json');
-const matches = fs.existsSync(matchesPath) ? JSON.parse(fs.readFileSync(matchesPath, 'utf8')) : [];
+
+// ---------- Persons: ФИО ---------------------------------------------------
+const personsFile = (cfg.ROOTS.find(r => r.name === 'Persons')?.name || 'Persons') + '.json';
+const personsPath = path.join(__dirname, '..', cfg.PREVIOUS, personsFile);
+const persons     = fs.existsSync(personsPath) ? JSON.parse(fs.readFileSync(personsPath, 'utf8')) : [];
+
+const personsInfoMap = Object.fromEntries(
+  persons.map(p => [
+    p.ID,
+    {
+      surname:     (p.Surname || '').trim(),
+      name:        (p.Name || '').trim(),
+      patronymic:  (p.Patronymic || '').trim()
+    }
+  ])
+);
+
+// ---------- matches --------------------------------------------------------
+const matches  = fs.existsSync(matchesPath) ? JSON.parse(fs.readFileSync(matchesPath, 'utf8')) : [];
 const matchMap = Object.fromEntries(matches.map(m => [m.name.trim().toLowerCase(), m.contactId]));
 
-function nowStr() {
-  const d = new Date();
-  const p = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}`;
+function getContactInfo(idPatients) {
+  const person = personsInfoMap[idPatients];
+  if (!person) return { contactId: null, surname: null, full_name: null };
+  const { surname, name, patronymic } = person;
+  const full_name = [surname, name, patronymic].filter(Boolean).join(' ');
+  const contactId = matchMap[surname.toLowerCase()] || null;
+  return { contactId, surname, full_name };
 }
 
-module.exports = async function (input) {
-  const data = input?.[0];
-  if (!data || !Array.isArray(data.receptions) || !Array.isArray(data.patients)) {
-    console.error('❌ Неверный формат данных для repeat_visits');
-    return;
-  }
+// ---------- helpers --------------------------------------------------------
+const pad2 = n => String(n).padStart(2, '0');
+const fmtDate = ts => ts ? ts.split(' ')[0] : '';
+const nowStr  = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}_${pad2(d.getHours())}-${pad2(d.getMinutes())}`;
+};
+// ---------------------------------------------------------------------------
 
-  const patientMap = Object.fromEntries(
-    data.patients.map(p => [p.ID_Persons, (p.ParentSNP || '').split(' ')[0].toLowerCase()])
-  );
+module.exports = async function (rows) {
+  const attempts = [], sent = [], skipped = [];
 
-  const attempts = [];
-  const sent = [];
-  const skipped = [];
+  for (const raw of rows) {
+    const row = { ...raw };
+    if (row.ID === undefined && row.ID_Receptions !== undefined) row.ID = row.ID_Receptions;
 
-  for (const row of data.receptions) {
-    const surname = patientMap[row.ID_Patients];
-    const contactId = surname ? matchMap[surname] : null;
+    const { contactId, surname, full_name } = getContactInfo(row.ID_Patients);
 
-    const rawDates = {
-      ReceptionStarted: row.ReceptionStarted,
-      PlanStart: row.PlanStart,
-      ReceptionAdded: row.ReceptionAdded,
-      ReceptionEnded: row.ReceptionEnded,
-      CheckIssued: row.CheckIssued
-    };
+    const dateRaw  = row.ReceptionStarted || row.PlanStart || '';
+    const isoDate  = fmtDate(dateRaw);
+    const planName = row.Name || '';          // из TreatmentPlans.Name если пришло
 
-    const dates = {};
-    for (const [key, value] of Object.entries(rawDates)) {
-      dates[key] = value ? value.split(' ')[0] : null;
-    }
+    const human_comment =
+      `🔁 Повторный визит\n` +
+      `Пациент: ${full_name || '(неизвестно)'}\n` +
+      `Дата визита: ${isoDate || '—'}` +
+      (planName ? `\nПлан лечения: ${planName}` : '');
 
     const payload = {
       type: 'repeat_visits',
-      id: row.ID,
-      dates
+      id:   row.ID,
+      surname,
+      full_name,
+      date: isoDate,
+      plan_name: planName,
+      human_comment
     };
 
     attempts.push(payload);
@@ -61,19 +82,14 @@ module.exports = async function (input) {
       continue;
     }
 
-    try {
-      await axios.post(`${AMO_URL}/api/v4/contacts/${contactId}/notes`, [
-        {
-          note_type: 'common',
-          params: { text: JSON.stringify(payload, null, 2) }
-        }
-      ], {
-        headers: {
-          Authorization: AMO_TOKEN,
-          'Content-Type': 'application/json'
-        }
-      });
+    const text = `${human_comment}\n\n🧾 Технические данные:\n${JSON.stringify(payload, null, 2)}`;
 
+    try {
+      await axios.post(
+        `${AMO_URL}/api/v4/contacts/${contactId}/notes`,
+        [{ note_type: 'common', params: { text } }],
+        { headers: { Authorization: AMO_TOKEN, 'Content-Type': 'application/json' } }
+      );
       sent.push(payload);
       console.log(`✅ Sent repeat_visit note to contact ${contactId}`);
     } catch (err) {
@@ -87,11 +103,10 @@ module.exports = async function (input) {
     }
   }
 
-  const log = { attempts, sent, skipped };
-  const logName = `repeat_visits_${nowStr()}.json`;
   const logDir = path.join(__dirname, '..', 'logs');
   if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
-  const logPath = path.join(logDir, logName);
-  fs.writeFileSync(logPath, JSON.stringify(log, null, 2), 'utf8');
-  console.log(`📝 Log saved to logs/${logName}`);
+
+  const logPath = path.join(logDir, `repeat_visits_${nowStr()}.json`);
+  fs.writeFileSync(logPath, JSON.stringify({ attempts, sent, skipped }, null, 2), 'utf8');
+  console.log(`📝 Log saved to logs/${path.basename(logPath)}`);
 };
